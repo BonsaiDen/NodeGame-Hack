@@ -21,12 +21,15 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    Entity = require('./Entity').Entity;
+    Entity = require('./Entity').Entity,
+    utils = require('../lib/utils').utils;
 
 exports.Player = Class(function(network, color, name, isPassive) {
 
     this._color = color;
     this._name = name;
+    this._isPassive = isPassive;
+    this._hash = utils.uniqueHash();
 
     Entity(this, 'Player', network, {
         Node: new List()
@@ -34,7 +37,7 @@ exports.Player = Class(function(network, color, name, isPassive) {
 
 }, Entity, {
 
-    handleInput: function(input) {
+    action: function(action) {
 
     },
 
@@ -47,13 +50,13 @@ exports.Player = Class(function(network, color, name, isPassive) {
 
 
     // Actions ----------------------------------------------------------------
-    launchAction: function(sourceNode, targetNode, actionBehavior) {
+    //launchAction: function(sourceNode, targetNode, actionBehavior) {
 
-    },
+    //},
 
-    cancelAction: function(targetNode) {
+    //cancelAction: function(targetNode) {
 
-    },
+    //},
 
 
     // Getter / Setter --------------------------------------------------------
@@ -91,6 +94,10 @@ exports.Player = Class(function(network, color, name, isPassive) {
 
         return visible;
 
+    },
+
+    getHash: function() {
+        return this._hash;
     },
 
 

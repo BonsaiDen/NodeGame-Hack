@@ -73,7 +73,13 @@ exports.utils = {
                     && !(p instanceof Array)
                     && typeof p.toString === 'function') {
 
-                    return '[' + p.toString() + ']';
+                    var s = p.toString();
+                    if (s.substring(0, 8) === '[object ') {
+                        return p;
+
+                    } else {
+                        return '[' + s + ']';
+                    }
 
                 } else {
                     return p;

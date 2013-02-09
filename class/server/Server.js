@@ -35,14 +35,35 @@ var Server = Class(function(port, host, local) {
     this._ticksPerSecond = 10;
 
     this._clients = new List();
-    this._network = new Network();
-    this._network.loadFromFile('./data/map.json');
+    this._networks = new List();
 
     var server = require(local ? '../client/lib/Server' : './lib/lithium');
     this._interface = new server.Server();
     this._interface.on('connection', this._onConnect.bind(this));
 
 }, {
+
+    $Action: {
+
+        // A list of networks with free/total slots (full ones might be joined as observer)
+        NetworkList: 1000,
+
+        // Update for a network (players, slots, ready status)
+        NetworkInfo: 1003,
+
+        // Network was started (initial state to follow)
+        NetworkStarted: 1004,
+
+        // A client joined a network (client, slot, observer)
+        ClientJoined: 1005,
+
+        // A client left a network (client, slot, observer)
+        ClientLeft: 1006,
+
+        // A Network is finished (status)
+        NetworkDone: 1007
+
+    },
 
     // Actions ----------------------------------------------------------------
     start: function() {
@@ -61,9 +82,31 @@ var Server = Class(function(port, host, local) {
             elapsed += now - lastTick;
             lastTick = now;
 
+            that._clients.each(function(client) {
+
+                if (!client.isPlaying()) {
+                    client.update();
+                }
+
+            }, that);
+
             while(elapsed >= tickDuration) {
-                that._network.update();
+
+                that._networks.each(function(network) {
+
+                    if (network.isEmpty()) {
+                        network.destroy(that);
+                        that._networks.remove(network);
+                        //that.networkList();
+
+                    } else {
+                        network.update();
+                    }
+
+                }, that);
+
                 elapsed -= tickDuration;
+
             }
 
         }, tickDuration);
@@ -76,13 +119,94 @@ var Server = Class(function(port, host, local) {
         this.log('Stopped');
     },
 
+    //sendToAll: function(msg) {
+        //this._clients.each(function(client) {
+            //if (!client.isPlaying()) {
+                //client.send(msg);
+            //}
+        //});
+    //},
+
+    //sendToNetwork: function(network, msg) {
+        //network.getChildListFor('Client').each(function(client) {
+            //if (!client.isPlaying()) {
+                //client.send(msg);
+            //}
+        //});
+    //},
+
+
+    // Network Actions --------------------------------------------------------
+    //networkList: function() {
+        //this.sendToAll({
+            //type: Server.Action.NetworkList,
+            //data: []
+        //});
+    //},
+
+    //networkInfo: function(network) {
+        //utils.assert(network.isOfType('Network'), 'network is a Network');
+        //this.sendToNetwork(network, {});
+    //},
+
+    //clientJoined: function(network, client) {
+        //utils.assert(network.isOfType('Network'), 'network is a Network');
+        //utils.assert(client.isOfType('RemoteClient'), 'client is a RemoteClient');
+
+    //},
+
+    //clientLeft: function(network, client) {
+        //utils.assert(network.isOfType('Network'), 'network is a Network');
+        //utils.assert(client.isOfType('RemoteClient'), 'client is a RemoteClient');
+
+    //},
+
+    //networkStarted: function(network) {
+        //utils.assert(network.isOfType('Network'), 'network is a Network');
+
+    //},
+
+    //networkDone: function(network) {
+        //utils.assert(network.isOfType('Network'), 'network is a Network');
+
+    //},
+
+    //initNetwork: function(creator, mapName) {
+
+        //utils.assert(typeof mapName === 'string', 'mapName is a string');
+        //utils.assert(creator.isOfType('RemoteClient'), 'creator is a RemoteClient');
+
+        //var network = new Network(this);
+        //network.loadFromFile(this.getMapFile(mapName));
+
+        //this._networks.add(network);
+
+    //},
+
+    //joinNetwork: function(client) {
+
+    //},
+
+    //startNetwork: function(client, network) {
+
+    //},
+
+    //loadMap: function() {
+
+    //},
+
+
+    // Getter / Setter --------------------------------------------------------
+    //getMapFile: function(mapName) {
+    //},
+
 
     // Private ----------------------------------------------------------------
     _onConnect: function(remote) {
 
         this.log('Remote', remote);
         var clients = this._clients,
-            client = new Client(remote);
+            client = new Client(this, remote);
 
         remote.on('message', function(msg) {
             client.onMessage(msg);

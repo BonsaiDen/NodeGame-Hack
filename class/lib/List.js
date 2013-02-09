@@ -91,6 +91,11 @@ var List = Class(function(items, maxCount) {
         return this._list.slice();
     },
 
+    clear: function() {
+        this._list.length = 0;
+        this._items = {};
+    },
+
     at: function(offset) {
 
         if (offset < 0) {

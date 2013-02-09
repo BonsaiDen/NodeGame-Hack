@@ -21,16 +21,23 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    utils = require('../lib/utils').utils,
-    fs = require('fs'),
     Entity = require('./Entity').Entity,
     Player = require('./Player').Player,
     Node = require('./Node').Node,
     Link = require('./Link').Link,
     Action = require('./Action').Action,
-    Behavior = require('./Behavior').Behavior;
+    Behavior = require('./Behavior').Behavior,
+    utils = require('../lib/utils').utils,
+    fs = require('fs');
 
-exports.Network = Class(function() {
+exports.Network = Class(function(server) {
+
+    this._isReady = false;
+    this._isStarted = false;
+    this._isRunning = false;
+    this._playerSlots = new List(); // TODO ???
+    this._tick = 0;
+    this._hash = utils.uniqueHash();
 
     Entity(this, 'Network', null, {
         Link: new List(),
@@ -39,21 +46,22 @@ exports.Network = Class(function() {
         Client: new List()
     });
 
-    this._neutralPlayer = new Player(this, 0, 'Neutral', true);
-    this._observerPlayer = new Player(this, -1, 'Observer', true);
-    this._tick = 0;
+    this._neutralPlayer = new Player(this, 31, 'Neutral', false);
+    this._observerPlayer = new Player(this, 32, 'Observer', true);
 
 }, Entity, {
 
     // Actions ----------------------------------------------------------------
     update: function() {
 
-        //this.log('Update', this._tick);
+        if (!this.isRunning()) {
+            return;
+        }
 
+        //this.log('Update', this._tick);
         var tick = this._tick;
         this.getChildListFor('Client').each(function(client) {
-            // TODO expose network in order to have access to players
-            client.update(tick);
+            client.update();
         });
 
         this.getChildListFor('Node').each(function(node) {
@@ -72,14 +80,115 @@ exports.Network = Class(function() {
 
     },
 
+    start: function() {
+
+        if (this.isStarted()) {
+            return false;
+
+        } else {
+            this._isRunning = true;
+            this._isStarted = true;
+            this.setupClients();
+            return true;
+        }
+
+    },
+
+    stop: function() {
+
+        if (this.isRunning()) {
+            this._isRunning = false;
+            this._clients.each(function(client) {
+                client.leave();
+            });
+            return true;
+
+        } else {
+            return false;
+        }
+
+    },
+
 
     // Getter / Setter --------------------------------------------------------
+    isStarted: function() {
+        return this._isStarted;
+    },
+
+    isRunning: function() {
+        return this._isRunning;
+    },
+
+    isEmpty: function() {
+        // TODO check for timeout of the game
+        // so players can refresh and re-join if needed
+        return this.getChildListFor('Client').length === 0;
+    },
+
+    isReady: function() {
+        return this._isReady;
+    },
+
     getNeutral: function() {
         return this._neutralPlayer;
     },
 
+    addChild: function(child) {
+
+        Entity.addChild(this, child);
+
+        if (child.isOfType('Client'))  {
+            // TODO update info for all clients in netwrk
+        }
+
+    },
+
+    removeChild: function(child) {
+
+        Entity.addChild(this, child);
+
+        if (child.isOfType('Client'))  {
+            // TODO update info for all clients in netwrk
+        }
+
+    },
+
+    getHash: function() {
+        return this._hash;
+    },
+
 
     // Helpers ----------------------------------------------------------------
+    setupClients: function() {
+
+
+        // TODO give player a game hash so the client can je-join
+        // in case the
+
+        // Create players for the taken slots and associate them with
+        // their clients
+
+        this._playerSlots.each(function(slot) {
+
+            if (slot.client !== null) {
+                var player = new Player(this, slot.id, slot.client.getName());
+                slot.client.setPlayer(player);
+                slot.node.setOwner(player);
+            }
+
+        });
+
+        this._clients.each(function(client) {
+            if (!client.getPlayer()) {
+                client.setPlaying(this._observerPlayer);
+            }
+            client.setPlaying();
+        });
+
+        this._playerSlots.clear();
+
+    },
+
     loadFromFile: function(filename) {
         var json = JSON.parse(fs.readFileSync(filename).toString());
         this.loadFromJson(json);
@@ -92,8 +201,21 @@ exports.Network = Class(function() {
         var nodes = map.nodes,
             links = map.links;
 
+        this._playerSlots.clear();
         utils.each(map.nodes, function(node, i) {
+
             nodes[i] = new Node(this, this.getNeutral(), node);
+
+            // Create slots where players can start at
+            if (node.isSlot) {
+
+                this._playerSlots.add({
+                    id: this._playerSlots.length,
+                    node: node,
+                    client: null
+                });
+
+            }
 
         }, this);
 
@@ -109,7 +231,7 @@ exports.Network = Class(function() {
 
         }, this);
 
-        this.log('Map loaded');
+        this.log('Map loaded with', this._playerSlots.length, 'slots');
 
     },
 
