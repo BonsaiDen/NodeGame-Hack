@@ -66,7 +66,7 @@
                 path = '/' + combinePath(document.location.pathname, mod) + '.js';
 
             if (moduleCache.hasOwnProperty(path)) {
-                console.info('[require ' + name + ' (cached) by ' + parent + ']');
+                //console.info('[require ' + name + ' (cached) by ' + parent + ']');
                 return moduleCache[path];
 
             } else {
@@ -84,7 +84,7 @@
                     throw new Error('Cannot find module \'' + name + '\' required by ' + parent);
 
                 } else {
-                    console.info('[require ' + name + ' (initial) by ' + parent + ']');
+                    //console.info('[require ' + name + ' (initial) by ' + parent + ']');
 
                     var f = new c[c][c]('module', 'exports', 'require', req.responseText),
                         require = requireWithBase(mod, mod.split('/').slice(0, -1).join('/'));

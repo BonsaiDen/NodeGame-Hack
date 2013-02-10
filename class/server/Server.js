@@ -21,95 +21,79 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    utils = require('../lib/utils').utils,
-    Network = require('./Network').Network,
-    Client = require('./Client').Client;
+    Game = require('./Game').Game,
+    Client = require('./Client').Client,
+    NetworkEvent = require('./NetworkEvent').NetworkEvent,
+    utils = require('../lib/utils').utils;
 
 var Server = Class(function(port, host, local) {
 
-    utils.assert(typeof host === 'string', 'host is a string');
-    utils.assert(typeof port === 'number' && !isNaN(port), 'port is a number');
+    utils.assertType(host, 'String');
+    utils.assertType(port, 'Number');
 
     this._port = port;
     this._host = host;
-    this._ticksPerSecond = 10;
+
+    this._ticksPerSecond = 20;
+    this._lastTickTime = 0;
+    this._elapsedTickTime = 0;
+    this._tickDuration = Math.floor(1000 / this._ticksPerSecond);
 
     this._clients = new List();
-    this._networks = new List();
+    this._games = new List();
 
     var server = require(local ? '../client/lib/Server' : './lib/lithium');
-    this._interface = new server.Server();
+    this._interface = new server.Server(null, JSON.stringify, JSON.parse);
     this._interface.on('connection', this._onConnect.bind(this));
 
 }, {
-
-    $Action: {
-
-        // A list of networks with free/total slots (full ones might be joined as observer)
-        NetworkList: 1000,
-
-        // Update for a network (players, slots, ready status)
-        NetworkInfo: 1003,
-
-        // Network was started (initial state to follow)
-        NetworkStarted: 1004,
-
-        // A client joined a network (client, slot, observer)
-        ClientJoined: 1005,
-
-        // A client left a network (client, slot, observer)
-        ClientLeft: 1006,
-
-        // A Network is finished (status)
-        NetworkDone: 1007
-
-    },
 
     // Actions ----------------------------------------------------------------
     start: function() {
 
         this._interface.listen(this._port, this._host);
+
+        this._lastTickTime = Date.now();
+        this._elapsedTickTime = this._tickDuration;
+        this._interval = setInterval(this.update.bind(this), this._tickDuration);
+
         this.log('Started');
+        this.update();
 
-        var that = this,
-            lastTick = Date.now(),
-            elapsed = 0,
-            tickDuration = Math.floor(1000 / this._ticksPerSecond);
+    },
 
-        this._interval = setInterval(function() {
+    update: function() {
 
-            var now = Date.now();
-            elapsed += now - lastTick;
-            lastTick = now;
+        var now = Date.now();
+        this._elapsedTickTime += now - this._lastTickTime;
+        this._lastTickTime = now;
 
-            that._clients.each(function(client) {
+        this._clients.each(function(client) {
 
-                if (!client.isPlaying()) {
-                    client.update();
-                }
-
-            }, that);
-
-            while(elapsed >= tickDuration) {
-
-                that._networks.each(function(network) {
-
-                    if (network.isEmpty()) {
-                        network.destroy(that);
-                        that._networks.remove(network);
-                        //that.networkList();
-
-                    } else {
-                        network.update();
-                    }
-
-                }, that);
-
-                elapsed -= tickDuration;
-
+            if (!client.isPlaying()) {
+                client.update();
             }
 
-        }, tickDuration);
+        }, this);
+
+        while(this._elapsedTickTime >= this._tickDuration) {
+
+            this._games.each(function(game) {
+
+                if (game.isEmpty()) {
+                    game.destroy(this);
+                    this.removeGame(game);
+                    //this.gameList(); // TODO update game list
+
+                } else {
+                    game.update();
+                }
+
+            }, this);
+
+            this._elapsedTickTime -= this._tickDuration;
+
+        }
 
     },
 
@@ -119,86 +103,31 @@ var Server = Class(function(port, host, local) {
         this.log('Stopped');
     },
 
-    //sendToAll: function(msg) {
-        //this._clients.each(function(client) {
-            //if (!client.isPlaying()) {
-                //client.send(msg);
-            //}
-        //});
-    //},
-
-    //sendToNetwork: function(network, msg) {
-        //network.getChildListFor('Client').each(function(client) {
-            //if (!client.isPlaying()) {
-                //client.send(msg);
-            //}
-        //});
-    //},
-
-
-    // Network Actions --------------------------------------------------------
-    //networkList: function() {
-        //this.sendToAll({
-            //type: Server.Action.NetworkList,
-            //data: []
-        //});
-    //},
-
-    //networkInfo: function(network) {
-        //utils.assert(network.isOfType('Network'), 'network is a Network');
-        //this.sendToNetwork(network, {});
-    //},
-
-    //clientJoined: function(network, client) {
-        //utils.assert(network.isOfType('Network'), 'network is a Network');
-        //utils.assert(client.isOfType('RemoteClient'), 'client is a RemoteClient');
-
-    //},
-
-    //clientLeft: function(network, client) {
-        //utils.assert(network.isOfType('Network'), 'network is a Network');
-        //utils.assert(client.isOfType('RemoteClient'), 'client is a RemoteClient');
-
-    //},
-
-    //networkStarted: function(network) {
-        //utils.assert(network.isOfType('Network'), 'network is a Network');
-
-    //},
-
-    //networkDone: function(network) {
-        //utils.assert(network.isOfType('Network'), 'network is a Network');
-
-    //},
-
-    //initNetwork: function(creator, mapName) {
-
-        //utils.assert(typeof mapName === 'string', 'mapName is a string');
-        //utils.assert(creator.isOfType('RemoteClient'), 'creator is a RemoteClient');
-
-        //var network = new Network(this);
-        //network.loadFromFile(this.getMapFile(mapName));
-
-        //this._networks.add(network);
-
-    //},
-
-    //joinNetwork: function(client) {
-
-    //},
-
-    //startNetwork: function(client, network) {
-
-    //},
-
-    //loadMap: function() {
-
-    //},
-
 
     // Getter / Setter --------------------------------------------------------
-    //getMapFile: function(mapName) {
-    //},
+    addGame: function(game) {
+        utils.assertClass(game, 'Game');
+        this._games.add(game);
+        // TODO send game list to clients
+    },
+
+    getGameById: function(guid) {
+
+        var games = utils.filter(this._games, function(game) {
+            return game.getGuid() === guid;
+        });
+
+        utils.assert(games.length <= 1, '<= 1 games found for guid');
+
+        return games[0];
+
+    },
+
+    removeGame: function(game) {
+        utils.assertClass(game, 'Game');
+        this._games.remove(game);
+        // TODO send game list to clients
+    },
 
 
     // Private ----------------------------------------------------------------
@@ -209,7 +138,15 @@ var Server = Class(function(port, host, local) {
             client = new Client(this, remote);
 
         remote.on('message', function(msg) {
-            client.onMessage(msg);
+
+            var event = NetworkEvent.fromArray(msg);
+            if (event) {
+                client.onEvent(event);
+
+            } else {
+                console.log('Invalid message:', msg);
+            }
+
         });
 
         remote.on('close', function() {

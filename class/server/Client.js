@@ -21,17 +21,19 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
+    Entity = require('./Entity').Entity,
+    NetworkEvent = require('./NetworkEvent').NetworkEvent,
     utils = require('../lib/utils').utils,
-    Entity = require('./Entity').Entity;
+    net = require('./net');
 
 var Client = Class(function(server, remote) {
 
     this._server = server;
     this._remote = remote;
-    this._network = null;
+    this._game = null;
     this._player = null;
     this._state = Client.State.Initializing;
-    this._events = new List();
+    this._events = [];
 
     Entity(this, 'Client');
 
@@ -47,90 +49,32 @@ var Client = Class(function(server, remote) {
         Game: 4
     },
 
-    $Action: {
-
-        // Creates a new network and joins it (map)
-        // - NetworkInfo follows
-        CreateNetwork: 100,
-
-        // Joins an existing network (network)
-        // - NetworkInfo follows
-        JoinNetwork: 101,
-
-        // Leaves the network the player is in
-        // - NetworkList follows
-        LeaveNetwork: 102,
-
-        // Changes the player slot for the network (slot)
-        // - NetworkInfo follows
-        SelectSlot: 103,
-
-        // Changes the player's ready status to true
-        // - NetworkInfo follows
-        Ready: 104,
-
-        // Changes the player's ready status to false
-        // - NetworkInfo follows
-        NotReady: 105,
-
-        // A action on the current network
-        NetworkAction: 106,
-
-        // Client joined a network (network)
-        // - NetworkInfo follows
-        // - ClientJoined and ClientLeft may follow
-        NetworkJoined: 107,
-
-        // Client left a network (network)
-        // - NetworkList follows
-        NetworkLeft: 108
-
-    },
-
-    $Error: {
-
-        // An invalid / unkown command was received from the client
-        InvalidCommand: 200,
-
-        // The client is not in a network although the action requires one
-        NoNetwork: 201,
-
-        // The slot requested is already taken
-        SlotTaken: 202,
-
-        // Network to join was not found
-        UnknownNetwork: 203,
-
-        // Already in the network requested to join
-        SameNetwork: 204,
-
-        // The network is alreay running
-        NetworkRunning: 205,
-
-        // The action requested by the client is invalid
-        InvalidAction: 206
-
-    },
-
-
     // Actions ----------------------------------------------------------------
     update: function() {
-        this._events.each(this.updateEvent, this);
-        this._events.clear();
+        utils.each(this._events, this.updateEvent, this);
+        this._events.length = 0;
     },
 
     updateEvent: function(event) {
 
-        var network,
+        var game,
+            code = event.code,
             state = this.getState();
 
         // 1. check connect handshake and send basic server settings like tick rate
         if (state === Client.State.Initializing) {
 
+            if (code === net.Command.Login) {
+                // validate username
+                // TODO persona login later on
+
+            } else {
+                this.invalid(event);
+            }
 
         // 2. sync time with the server
         } else if (state === Client.State.Syncing) {
-
+            //this.send(net.Client.Sync, []);
 
 
         // Server Menu --------------------------------------------------------
@@ -138,79 +82,98 @@ var Client = Class(function(server, remote) {
         } else if (state === Client.State.Server) {
 
             // Create
-            if (event.type === Client.Action.CreateNetwork) {
+            if (code === net.Command.Create) {
 
                 // check map, and stuff or so...
-                // TODO create network
-                this.join(network);
-                this.response('NetworkJoined', network.getHash());
+                // TODO create game
+                this.join(game);
+                //this.send(net.Client.Joined, [
+                    //game.getGuid()
+                //]);
 
             // Join
-            } else if (event.type === Client.Action.JoinNetwork) {
+            } else if (code === net.Command.Join) {
 
-                //utils.assert(network.isOfType('Network'), 'network is a Network');
-                network = this._server.getNetworkByHash(event.data);
-                if (network) {
+                //utils.assertClass(game, 'Game');
+                // TODO get game by guid
+                // game = this._server.getNetworkByHash(event.data);
+                if (game) {
 
-                    if (!this.join(network)) {
-                        this.error('SameNetwork', event.data);
+                    if (this.join(game)) {
+                        this.ok(event);
+
+                    } else {
+                        this.error(event, net.Error.AlreadyJoined, event.data);
                     }
 
                 } else {
-                    this.error('UnknownNetwork', event.data);
+                    this.error(event, net.Error.NotFound, event.data);
                 }
 
             } else {
-                this.error('InvalidCommand', event.type);
+                this.invalid(event);
             }
-
 
 
         // Lobby --------------------------------------------------------------
         // --------------------------------------------------------------------
         } else if (state === Client.State.Lobby) {
 
-            if (!this._network) {
-                this.error('NoNetwork');
+            if (!this._game) {
+                this.error(event, net.Error.NotAvailable);
                 this.setState('Server');
 
             // Leave
-            } else if (event.type === Client.Action.LeaveNetwork) {
+            } else if (code === net.Command.Leave) {
                 this.leave();
 
             // Slot Change
-            } else if (event.type === Client.Action.SelectSlot) {
+            } else if (code === net.Command.Slot) {
 
                 var slotId = event.data;
                 if (typeof slotId === 'number' && !isNaN(slotId)) {
 
-                    if (this._network.setPlayerSlot(slotId, this)) {
-                        this._server.networkInfo(this._network);
+                    if (this._game.setSlotClient(slotId, this)) {
+                        //this._server.networkInfo(this._game);
+                        this.ok(event);
 
                     } else {
-                        this.error('SlotTaken', slotId);
+                        this.error(event, net.Error.SlotTaken, slotId);
                     }
 
                 } else {
-                    this.error('InvalidCommand');
+                    this.invalid(event);
                 }
 
             // Ready
-            } else if (event.type === Client.Action.Ready) {
-                this._isReady = true;
+            } else if (code === net.Command.Ready) {
 
-            // Not Ready
-            } else if (event.type === Client.Action.NotReady) {
+                var isReady = event.data;
+                if (typeof isReady === 'boolean') {
 
-                if (!this._network.isReady()) {
-                    this._isReady = false;
+                    if (isReady) {
+                        //this._game.setReady();
+                        this._isReady = true;
+                        this.ok(event);
+
+                    } else {
+
+                        if (!this._game.isReady()) {
+                            this._isReady = false;
+                            this.ok(event);
+
+                        } else {
+                            this.error(event, net.Error.NotAvailable);
+                        }
+
+                    }
 
                 } else {
-                    this.error('NetworkRunning');
+                    this.invalid(event);
                 }
 
             } else {
-                this.error('InvalidCommand', event.type);
+                this.invalid(event);
             }
 
 
@@ -218,26 +181,26 @@ var Client = Class(function(server, remote) {
         // --------------------------------------------------------------------
         } else if (state === Client.State.Game) {
 
-            if (event.type === Client.Action.NetworkAction) {
+            if (code === Client.Command.Action) {
 
                 var player = this.getPlayer();
                 if (!player) {
-                    this.error(Client.Error.InvalidCommand, event.type);
+                    this.invalid(event);
 
                 // TODO verify action
                 } else if (true) {
                     this.getPlayer().action(event.data);
 
                 } else {
-                    this.error(Client.Error.InvalidAction, event.data);
+                    this.invalid(event);
                 }
 
             } else {
-                this.error(Client.Error.InvalidCommand, event.type);
+                this.invalid(event);
             }
 
         } else {
-            this.error(Client.Error.InvalidCommand, event.type);
+            this.invalid(event);
         }
 
     },
@@ -248,17 +211,17 @@ var Client = Class(function(server, remote) {
     },
 
 
-    // Network Actions --------------------------------------------------------
-    join: function(network) {
+    // Game Actions -----------------------------------------------------------
+    join: function(game) {
 
-        if (network !== this._network) {
+        if (game !== this._game) {
 
             this.leave();
 
-            this._network = network;
-            this._network.removeChild(this);
+            this._game = game;
+            this._game.removeChild(this);
             this.setState('Lobby');
-            this.response('NetworkJoined', network.getHash());
+            //this.response('NetworkJoined', game.getHash());
 
             return true;
 
@@ -270,15 +233,15 @@ var Client = Class(function(server, remote) {
 
     leave: function() {
 
-        if (this._network) {
+        if (this._game) {
 
-            var network = this._network;
-            this._network.removeChild(this);
-            this._network = null;
+            var game = this._game;
+            this._game.removeChild(this);
+            this._game = null;
             this._player = null;
 
             this.setState('Server');
-            this.response('NetworkLeft', this._network.getHash());
+            //this.response('NetworkLeft', this._game.getHash());
 
             return true;
 
@@ -290,29 +253,26 @@ var Client = Class(function(server, remote) {
 
     setPlaying: function() {
         this.setState('Game');
-        this.send('NetworkStarted', [
-            this._network.getHash(),
-            this.getPlayer().getHash()
-        ]);
+        //this.send('NetworkStarted', [
+            //this._game.getHash(),
+            //this.getPlayer().getHash()
+        //]);
     },
 
-    send: function(type, data) {
-        this._remote.send({
-            type: type,
-            data: data !== undefined ? data : null
-        });
+    send: function(id, code, data) {
+        var event = new NetworkEvent(id, code, data !== undefined ? data : null);
+        this._remote.send(event.toArray());
     },
 
-    response: function(type, data) {
-        this.assert(typeof type === 'string', 'type is a string');
-        this.assert(Client.Action.hasOwnProperty(type), 'response "' + type + '" is a valid action code');
-        this.send(type, data);
+    error: function(event, code, data) {
+        utils.assertClass(event, 'NetworkEvent');
+        utils.assert(net.Error.indexOf(code) !== -1, 'error code does exist');
+        this.send(event.id, code, data);
     },
 
-    error: function(type, data) {
-        this.assert(typeof type === 'string', 'type is a string');
-        this.assert(Client.Error.hasOwnProperty(type), 'error "' + type + '" is a valid error code');
-        this.send(type, data);
+    invalid: function(event) {
+        utils.assertClass(event, 'NetworkEvent');
+        this.send(event.id, net.Error.Invalid, event.data);
     },
 
 
@@ -321,19 +281,17 @@ var Client = Class(function(server, remote) {
         this.log('Quit');
     },
 
-    onMessage: function(msg) {
-        // TODO for now just echo
-        this.log('Message:', msg);
-        this.send(msg);
-        // parse incoming messages for events
-        // push into event queue
+    onEvent: function(event) {
+        utils.assertClass(event, 'NetworkEvent');
+        this.log('Event:', event);
+        this._events.push(event);
     },
 
 
     // Getter / Setter --------------------------------------------------------
     setState: function(state) {
-        this.assert(typeof state === 'string', 'state is a string');
-        this.assert(Client.State.hasOwnProperty(state), '"' + state + '" is a valid state');
+        utils.assertType(state, 'String');
+        utils.assert(Client.State.hasOwnProperty(state), '"' + state + '" is a valid state');
         this._state = state;
     },
 
@@ -342,7 +300,7 @@ var Client = Class(function(server, remote) {
     },
 
     setPlayer: function(player) {
-        this.assert(player.isOfType('Player'), 'player is a Player');
+        utils.assertClass(player, 'Player');
         this._player = player;
     },
 
@@ -350,8 +308,12 @@ var Client = Class(function(server, remote) {
         return this._player;
     },
 
+    getName: function() {
+        return ''; // TODO add naming
+    },
+
     isPlaying: function() {
-        return this._network && this._network.isStarted();
+        return this._game && this._game.isStarted();
     },
 
     isReady: function() {

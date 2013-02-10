@@ -21,16 +21,17 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    Entity = require('./Entity').Entity;
+    Entity = require('./Entity').Entity,
+    utils = require('../lib/utils').utils;
 
-exports.Link = Class(function(network, one, two) {
+exports.Link = Class(function(game, one, two) {
 
     this._nodeOne = one;
     this._nodeTwo = two;
 
-    Entity(this, 'Link', network);
+    Entity(this, 'Link', game);
 
-    this.setOwner(network.getNeutral());
+    this.setOwner(game.getNeutral());
 
 }, Entity, {
 
@@ -48,7 +49,7 @@ exports.Link = Class(function(network, one, two) {
     },
 
     getTargetForNode: function(node) {
-        this.assert(node === this._nodeOne || node === this._nodeTwo, 'node is either side of the link');
+        utils.assert(node === this._nodeOne || node === this._nodeTwo, 'node is either side of the link');
         return this._nodeOne === node ? this._nodeTwo : this._nodeOne;
     },
 

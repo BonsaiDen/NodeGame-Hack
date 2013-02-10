@@ -21,22 +21,23 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    Entity = require('./Entity').Entity;
+    Entity = require('./Entity').Entity,
+    utils = require('../lib/utils').utils;
 
 exports.Action = Class(function(route, behavior) {
 
-    this.assert(route.isOfType('Route'), 'route is a Route');
-    this.assert(route.isValid(), 'route is valid');
-    this.assert(behavior.isOfType('Behavior'), 'behavior is a Behavior');
+    utils.assertClass(route, 'Route');
+    utils.assert(route.isValid(), 'route is valid');
+    utils.assertClass(behavior, 'Behavior');
 
-    this.assert(route.getTarget().getNeutralActionsForBehavior(behavior).length === 0,
+    utils.assert(route.getTarget().getNeutralActionsForBehavior(behavior).length === 0,
                 'route target has no neutral action with the same behavior');
 
     this._behavior = behavior;
     this._isPaused = true;
     this._route = route;
     this._node = route.getTarget();
-    this._network = this._node.getParent();
+    this._game = this._node.getParent();
     this._isStarted = false;
 
     Entity(this, 'Action', route.getTarget()); // Node is parent
@@ -68,7 +69,7 @@ exports.Action = Class(function(route, behavior) {
     },
 
     start: function() {
-        this.assert(!this._isStarted, 'action was not yet started');
+        utils.assert(!this._isStarted, 'action was not yet started');
         this.log('Started');
         this._isPaused = false;
         this._isStarted = true;
@@ -78,20 +79,20 @@ exports.Action = Class(function(route, behavior) {
 
         // TODO check for any other behaviors of the same type
         // and then discard all but the most progressed one
-        this.assert(!this.isNeutral(), 'action is not owned by neutral');
+        utils.assert(!this.isNeutral(), 'action is not owned by neutral');
 
         this._route = null;
         this._isPaused = true;
-        this.setOwner(this._network.getNeutral());
+        this.setOwner(this._game.getNeutral());
         this.log('Paused');
 
     },
 
     resume: function(route) {
 
-        this.assert(route.isOfType('Route'), 'route is a Route');
-        this.assert(this._route === null, 'action has no route');
-        this.assert(this.isNeutral(), 'action is owned by neutral');
+        utils.assertClass(route, 'Route');
+        utils.assert(this._route === null, 'action has no route');
+        utils.assert(this.isNeutral(), 'action is owned by neutral');
 
         this._isPaused = false;
         this.setOwner(route.getOwner()); // Set to route player
@@ -100,7 +101,7 @@ exports.Action = Class(function(route, behavior) {
     },
 
     stop: function() {
-        this.assert(!this.isNeutral(), 'action is not owned by neutral');
+        utils.assert(!this.isNeutral(), 'action is not owned by neutral');
         this.log('Stopped');
         this.destroy(this);
     },
@@ -112,7 +113,7 @@ exports.Action = Class(function(route, behavior) {
     },
 
     isNeutral: function() {
-        return this.isOwnedBy(this._network.getNeutral());
+        return this.isOwnedBy(this._game.getNeutral());
     },
 
 

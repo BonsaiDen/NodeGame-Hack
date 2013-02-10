@@ -19,7 +19,7 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-exports.utils = {
+var utils = {
 
     each: function(list, callback, scope) {
         list.slice().forEach(function(item, i) {
@@ -57,6 +57,44 @@ exports.utils = {
         }
     },
 
+    assertType: function(value, type) {
+        utils.assert(utils['is' + type](value), 'value is a ' + type);
+    },
+
+    assertClass: function(object, clas) {
+        var isClass = typeof object.isOfType === 'function';
+        utils.assert(isClass && object.isOfType(clas), 'object is a instance of ' + clas);
+    },
+
+    isString: function(value) {
+        return typeof value === 'string';
+    },
+
+    isObject: function(value) {
+        return Object.prototype.toString.call(value) === '[object Object]';
+    },
+
+    isArray: function(value) {
+        return Object.prototype.toString.call(value) === '[object Array]';
+    },
+
+    isBool: function(value) {
+        return typeof value === 'boolean';
+    },
+
+    isNumber: function(value) {
+        return typeof value === 'number' && !isNaN(value);
+    },
+
+    guid: function() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0,
+                v = c === 'x' ? r : (r & 0x3 | 0x8);
+
+            return v.toString(16);
+        });
+    },
+
     log: function() {
 
         var params = [this, '>'];
@@ -67,7 +105,7 @@ exports.utils = {
 
         } else {
 
-            params = exports.utils.map(params, function(p) {
+            params = utils.map(params, function(p) {
 
                 if (typeof p === 'object'
                     && !(p instanceof Array)
@@ -94,4 +132,6 @@ exports.utils = {
     }
 
 };
+
+exports.utils = utils;
 

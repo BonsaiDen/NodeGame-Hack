@@ -20,44 +20,48 @@
   * THE SOFTWARE.
   */
 var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
-    Entity = require('./Entity').Entity;
+    utils = require('../lib/utils').utils,
+    net = require('./net');
 
-exports.Behavior = Class(function(behaviorName) {
+var NetworkEvent = Class(function(id, code, data) {
+    utils.assert(utils.isNumber(id), 'id is a number');
+    utils.assert(id > 0, 'id is greater than 0');
+    utils.assert(utils.isNumber(code), 'code is a number');
+    utils.assert(net.All.indexOf(code) !== -1, 'code is valid code');
 
-    this._behaviorName = behaviorName;
-    Entity(this, 'Behavior');
+    this.id = id;
+    this.code = code;
+    this.data = data;
 
-}, Entity, {
+}, {
 
-    // Actions ----------------------------------------------------------------
-    update: function(tick) {
+    $fromArray: function(array) {
+
+        if (Array.isArray(array) && array.length === 3) {
+            if (utils.isNumber(array[0]) && utils.isNumber(array[1])) {
+                if (array[0] > 0 && net.All.indexOf(array[1]) !== -1) {
+                    return new NetworkEvent(array[0], array[1], array[2]);
+                }
+            }
+        }
+
+        return null;
 
     },
 
-    execute: function(node) {
-
+    toArray: function() {
+        return [this.id, this.code, this.data];
     },
 
-    equals: function(other) {
-        utils.assertClass(other, 'Behavior');
-        return this.getName() === other.getName();
+    isOfType: function(type) {
+        return type === 'NetworkEvent';
     },
 
-
-    // Getter / Setter --------------------------------------------------------
-    isCompleted: function() {
-        return false;
-    },
-
-    getName: function() {
-        return this._behaviorName;
-    },
-
-    // Helpers ----------------------------------------------------------------
     toString: function() {
-        return Entity.toString(this) + ' (' + this.getName() + ')';
+        return 'NetworkEvent id:' + this.id + ' code:' + this.code;
     }
 
 });
+
+exports.NetworkEvent = NetworkEvent;
 

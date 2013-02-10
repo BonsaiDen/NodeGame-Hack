@@ -21,19 +21,22 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    utils = require('../lib/utils').utils;
+    NetworkEvent = require('../server/NetworkEvent').NetworkEvent,
+    utils = require('../lib/utils').utils,
+    net = require('../server/net');
 
 exports.Client = Class(function(port, host, local) {
 
-    utils.assert(typeof host === 'string', 'host is a string');
-    utils.assert(typeof port === 'number' && !isNaN(port), 'port is a number');
+    utils.assertType(host, 'String');
+    utils.assertType(port, 'Number');
 
     this._port = port;
     this._host = host;
     this._isLocal = !!local;
+    this._networkId = 0;
 
     var client = require(this._isLocal ? './lib/Server' : './lib/lithium');
-    this._interface = new client.Client();
+    this._interface = new client.Client(null, JSON.stringify, JSON.parse);
 
 }, {
 
@@ -49,11 +52,20 @@ exports.Client = Class(function(port, host, local) {
         this._interface.close();
     },
 
+    send: function(code, data) {
+
+        var id = ++this._networkId,
+            event = new NetworkEvent(id, code, data !== undefined ? data : null);
+
+        this._interface.send(event.toArray());
+
+    },
+
 
     // Event Handlers ---------------------------------------------------------
     onConnection: function() {
         this.log('Connected');
-        this._interface.send('Hello world');
+        this.send(net.Command.Login, 'BonsaiDen');
     },
 
     onMessage: function(msg) {
@@ -75,10 +87,6 @@ exports.Client = Class(function(port, host, local) {
     // Helpers ----------------------------------------------------------------
     log: function() {
         utils.log.apply(this, arguments);
-    },
-
-    assert: function(assertion, msg) {
-        utils.assert(assertion, msg);
     },
 
     toString: function() {

@@ -30,16 +30,16 @@ var Class = require('../lib/Class').Class,
     utils = require('../lib/utils').utils,
     fs = require('fs');
 
-exports.Network = Class(function(server) {
+exports.Game = Class(function(server) {
 
     this._isReady = false;
     this._isStarted = false;
     this._isRunning = false;
     this._playerSlots = new List(); // TODO ???
     this._tick = 0;
-    this._hash = utils.uniqueHash();
+    this._guid = utils.guid();
 
-    Entity(this, 'Network', null, {
+    Entity(this, 'Game', null, {
         Link: new List(),
         Node: new List(),
         Player: new List(),
@@ -58,7 +58,6 @@ exports.Network = Class(function(server) {
             return;
         }
 
-        //this.log('Update', this._tick);
         var tick = this._tick;
         this.getChildListFor('Client').each(function(client) {
             client.update();
@@ -73,7 +72,7 @@ exports.Network = Class(function(server) {
         });
 
         this.getChildListFor('Player').each(function(player) {
-            player.update(tick); // TODO calulate new player state in here
+            player.update(tick); // TODO calculate new player state in here
         });
 
         this._tick++;
@@ -88,9 +87,34 @@ exports.Network = Class(function(server) {
         } else {
             this._isRunning = true;
             this._isStarted = true;
-            this.setupClients();
+            this.init();
             return true;
         }
+
+    },
+
+    init: function() {
+
+        // TODO give player a game hash so the client can je-join
+        // in case the
+        this._playerSlots.each(function(slot) {
+
+            if (slot.client !== null) {
+                var player = new Player(this, slot.id, slot.client.getName());
+                slot.client.setPlayer(player);
+                slot.node.setOwner(player);
+            }
+
+        });
+
+        this._clients.each(function(client) {
+            if (!client.getPlayer()) {
+                client.setPlayer(this._observerPlayer);
+            }
+            client.setPlaying();
+        });
+
+        this._playerSlots.clear();
 
     },
 
@@ -138,7 +162,7 @@ exports.Network = Class(function(server) {
         Entity.addChild(this, child);
 
         if (child.isOfType('Client'))  {
-            // TODO update info for all clients in netwrk
+            // TODO update info for all clients in game
         }
 
     },
@@ -153,42 +177,12 @@ exports.Network = Class(function(server) {
 
     },
 
-    getHash: function() {
-        return this._hash;
+    getGuid: function() {
+        return this._guid;
     },
 
 
     // Helpers ----------------------------------------------------------------
-    setupClients: function() {
-
-
-        // TODO give player a game hash so the client can je-join
-        // in case the
-
-        // Create players for the taken slots and associate them with
-        // their clients
-
-        this._playerSlots.each(function(slot) {
-
-            if (slot.client !== null) {
-                var player = new Player(this, slot.id, slot.client.getName());
-                slot.client.setPlayer(player);
-                slot.node.setOwner(player);
-            }
-
-        });
-
-        this._clients.each(function(client) {
-            if (!client.getPlayer()) {
-                client.setPlaying(this._observerPlayer);
-            }
-            client.setPlaying();
-        });
-
-        this._playerSlots.clear();
-
-    },
-
     loadFromFile: function(filename) {
         var json = JSON.parse(fs.readFileSync(filename).toString());
         this.loadFromJson(json);

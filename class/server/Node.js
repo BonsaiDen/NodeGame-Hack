@@ -22,11 +22,12 @@
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
     Entity = require('./Entity').Entity,
-    Route = require('./Route').Route;
+    Route = require('./Route').Route,
+    utils = require('../lib/utils').utils;
 
-exports.Node = Class(function(network, player, data) {
+exports.Node = Class(function(game, player, data) {
 
-    Entity(this, 'Node', network, {
+    Entity(this, 'Node', game, {
         Node: new List(),
         Action: new List(),
         Route: new List(1)
@@ -52,9 +53,9 @@ exports.Node = Class(function(network, player, data) {
 
     routeForPlayer: function(player, target) {
 
-        this.assert(target.isOfType('Node'), 'target is Node');
-        this.assert(player.isOfType('Player'), 'player is Player');
-        this.assert(this.isOwnedBy(player), 'player is owner of this node');
+        utils.assertClass(target, 'Node');
+        utils.assertClass(player, 'Player');
+        utils.assert(this.isOwnedBy(player), 'player is owner of this node');
 
         var maxDist = 100000000,
             distance = {},
@@ -160,7 +161,7 @@ exports.Node = Class(function(network, player, data) {
 
     getDistanceToNode: function(other) {
 
-        this.assert(other.isOfType('Node'), 'other is a Node');
+        utils.assertClass(other, 'Node');
 
         var a = this.getPosition(),
             b = other.getPosition(),
@@ -192,7 +193,7 @@ exports.Node = Class(function(network, player, data) {
     },
 
     isTraversableByPlayer: function(player) {
-        this.assert(player.isOfType('Player'), 'player is a Player');
+        utils.assertClass(player, 'Player');
         return player.isFriendOf(this.getOwner());
         //return this.getOwner().isFriendOf(player); // TODO why doesn' this work?
     },

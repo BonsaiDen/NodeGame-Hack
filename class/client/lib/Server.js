@@ -89,11 +89,13 @@ var Remote = Class(function(server, socket, version, client) {
 // Local Server and Client Abstraction ----------------------------------------
 var serverMap = {};
 
-exports.Server = Class(function() {
+exports.Server = Class(function(callback, encoder, decoder) {
 
     this._id = null;
     this._clients = new List();
     this._remotes = {};
+    this._encoder = encoder || function(msg) { return msg; };
+    this._decoder = decoder || function(msg) { return msg; };
 
     Emitter(this);
 
@@ -129,11 +131,11 @@ exports.Server = Class(function() {
 
     sendToRemote: function(client, data) {
         var remote = this._remotes[client.id];
-        remote.emit('message', data);
+        remote.emit('message', this._decoder(data));
     },
 
     sendToClient: function(client, data) {
-        client.emit('message', data);
+        client._receive(this._encoder(data));
     },
 
     closeByRemote: function(client, reason) {
@@ -160,13 +162,15 @@ exports.Server = Class(function() {
 });
 
 
-exports.Client = Class(function(callback) {
+exports.Client = Class(function(callback, encoder, decoder) {
 
     this.id = ++exports.Client.id;
     this._server = null;
     this._isConnected = false;
     this._wasConnected = false;
     this._closedByRemote = true;
+    this._encoder = encoder || function(msg) { return msg; };
+    this._decoder = decoder || function(msg) { return msg; };
 
     Emitter(this);
 
@@ -239,7 +243,11 @@ exports.Client = Class(function(callback) {
     },
 
     _send: function(data) {
-        this._server.sendToRemote(this, data);
+        this._server.sendToRemote(this, this._encoder(data));
+    },
+
+    _receive: function(data) {
+        this.emit('message', this._decoder(data));
     },
 
     _close: function(reason) {

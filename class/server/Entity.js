@@ -46,14 +46,14 @@ exports.Entity = Class(function(type, parent, childTypes) {
 
     addChild: function(child) {
 
-        this.assert(child, 'child is not null/undefined');
-        this.assert(this._childTypes !== null, 'child types are set');
-        this.assert(child !== this, 'child cannot be its own child');
+        utils.assert(child, 'child is not null/undefined');
+        utils.assert(this._childTypes !== null, 'child types are set');
+        utils.assert(child !== this, 'child cannot be its own child');
 
         var types = this._childTypes;
         for(var type in types) {
             if (types.hasOwnProperty(type) && child.isOfType(type)) {
-                this.assert(types[type].add(child), type + ' was added');
+                utils.assert(types[type].add(child), type + ' was added');
                 this.log('Added child', child);
                 return;
             }
@@ -65,14 +65,14 @@ exports.Entity = Class(function(type, parent, childTypes) {
 
     removeChild: function(child) {
 
-        this.assert(child, 'child is not null/undefined');
-        this.assert(this._childTypes !== null, 'child types are set');
-        this.assert(child !== this, 'child cannot be its own child');
+        utils.assert(child, 'child is not null/undefined');
+        utils.assert(this._childTypes !== null, 'child types are set');
+        utils.assert(child !== this, 'child cannot be its own child');
 
         var types = this._childTypes;
         for(var type in types) {
             if (types.hasOwnProperty(type) && child.isOfType(type)) {
-                this.assert(types[type].remove(child), type + ' was removed');
+                utils.assert(types[type].remove(child), type + ' was removed');
                 this.log('Removed child', child);
                 return true;
             }
@@ -84,7 +84,7 @@ exports.Entity = Class(function(type, parent, childTypes) {
 
     destroy: function(caller) {
 
-        this.assert(typeof caller === 'object', 'Caller of destroy is a object');
+        utils.assertType(caller, 'Object');
 
         this.getParent() && this.getParent().removeChild(this);
 
@@ -114,8 +114,8 @@ exports.Entity = Class(function(type, parent, childTypes) {
 
     getChildListFor: function(type) {
 
-        this.assert(typeof type === 'string' && type !== '', 'type is a string');
-        this.assert(this._childTypes !== null, 'child types are set');
+        utils.assertType(type, 'String');
+        utils.assert(this._childTypes !== null, 'child types are set');
 
         return this._childTypes[type];
 
@@ -123,8 +123,8 @@ exports.Entity = Class(function(type, parent, childTypes) {
 
     getChildById: function(id) {
 
-        this.assert(typeof id === 'number' && !isNaN(id), 'id is a number');
-        this.assert(this._childTypes !== null, 'child types are set');
+        utils.assertType(id, 'Number');
+        utils.assert(this._childTypes !== null, 'child types are set');
 
         var types = this._childTypes;
         for(var type in types) {
@@ -136,7 +136,7 @@ exports.Entity = Class(function(type, parent, childTypes) {
     },
 
     setOwner: function(player) {
-        this.assert(player.isOfType('Player'), 'player is a Player');
+        utils.assertClass(player, 'Player');
         this._entityOwner = player;
         this.log('Is now owned by', player);
     },
@@ -146,7 +146,7 @@ exports.Entity = Class(function(type, parent, childTypes) {
     },
 
     isOwnedBy: function(player) {
-        this.assert(player.isOfType('Player'), 'player is a Player');
+        utils.assertClass(player, 'Player');
         return this._entityOwner === player;
     },
 
@@ -158,10 +158,6 @@ exports.Entity = Class(function(type, parent, childTypes) {
     // Helpers ----------------------------------------------------------------
     log: function() {
         utils.log.apply(this, arguments);
-    },
-
-    assert: function(assertion, msg) {
-        utils.assert(assertion, msg);
     },
 
     toString: function() {

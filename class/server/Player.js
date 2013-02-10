@@ -24,14 +24,14 @@ var Class = require('../lib/Class').Class,
     Entity = require('./Entity').Entity,
     utils = require('../lib/utils').utils;
 
-exports.Player = Class(function(network, color, name, isPassive) {
+exports.Player = Class(function(game, color, name, isPassive) {
 
     this._color = color;
     this._name = name;
     this._isPassive = isPassive;
     this._hash = utils.uniqueHash();
 
-    Entity(this, 'Player', network, {
+    Entity(this, 'Player', game, {
         Node: new List()
     });
 
@@ -61,7 +61,7 @@ exports.Player = Class(function(network, color, name, isPassive) {
 
     // Getter / Setter --------------------------------------------------------
     isFriendOf: function(other) {
-        this.assert(other.isOfType('Player'), 'other is a Player');
+        utils.assertClass(other, 'Player');
         return other === this || other === this.getParent().getNeutral();
     },
 

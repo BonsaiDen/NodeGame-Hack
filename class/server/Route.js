@@ -21,19 +21,20 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    Entity = require('./Entity').Entity;
+    Entity = require('./Entity').Entity,
+    utils = require('../lib/utils').utils;
 
 exports.Route = Class(function(node, player, path) {
 
-    this.assert(node.isOfType('Node'), 'node is a Node');
+    utils.assertClass(node, 'Node');
     Entity(this, 'Route', node);
 
-    this.assert(player.isOfType('Player'), 'owner is a Player');
+    utils.assertClass(player, 'Player');
     this.setOwner(player);
 
     this._nodes = path;
 
-    this.assert(this.isValid(), 'Route is valid');
+    utils.assert(this.isValid(), 'Route is valid');
 
 }, Entity, {
 
