@@ -20,51 +20,49 @@
   * THE SOFTWARE.
   */
 var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
-    Entity = require('./Entity').Entity,
-    utils = require('../lib/utils').utils;
+    utils = require('../lib/utils').utils,
+    net = require('../net');
 
-exports.Route = Class(function(node, player, path) {
+var Event = Class(function(id, code, data) {
 
-    utils.assertClass(node, 'Node');
-    Entity(this, 'Route', node);
+    utils.assert(utils.isNumber(id), 'id is a number');
+    utils.assert(id > 0 || id === -1, 'id is greater than 0 or -1');
+    utils.assert(utils.isNumber(code), 'code is a number');
+    utils.assert(net.All.indexOf(code) !== -1, 'code is valid code');
 
-    utils.assertClass(player, 'Player');
-    this.setOwner(player);
+    this.id = id;
+    this.code = code;
+    this.data = data;
 
-    this._nodes = path;
+}, {
 
-    utils.assert(this.isValid(), 'Route is valid');
+    $fromArray: function(array) {
 
-}, Entity, {
-
-    // Actions ----------------------------------------------------------------
-    update: function(tick) {
-
-        if (!this.isValid()) {
-            this.destroy(this);
+        if (Array.isArray(array) && array.length === 3) {
+            if (utils.isNumber(array[0]) && utils.isNumber(array[1])) {
+                if ((array[0] > 0 || array[0] === -1) && net.All.indexOf(array[1]) !== -1) {
+                    return new Event(array[0], array[1], array[2]);
+                }
+            }
         }
 
+        return null;
+
     },
 
-    // Getter / Setter --------------------------------------------------------
-    isValid: function() {
-        return this._nodes.every(function(node) {
-            return node === this.getTarget() || node.isTraversableByPlayer(this.getOwner());
-
-        }, this);
+    toArray: function() {
+        return [this.id, this.code, this.data];
     },
 
-    getSource: function() {
-        return this._nodes.first();
+    isOfType: function(type) {
+        return type === 'Event';
     },
 
-    getTarget: function() {
-        return this._nodes.last();
+    toString: function() {
+        return 'Event id:' + this.id + ' code:' + this.code;
     }
 
-    // Helpers ----------------------------------------------------------------
-
-
 });
+
+exports.Event = Event;
 

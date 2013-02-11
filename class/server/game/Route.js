@@ -19,45 +19,52 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
+var Class = require('../../lib/Class').Class,
+    List = require('../../lib/List').List,
+    utils = require('../../lib/utils').utils,
     Entity = require('./Entity').Entity;
 
-exports.Behavior = Class(function(behaviorName) {
+exports.Route = Class(function(node, player, path) {
 
-    this._behaviorName = behaviorName;
-    Entity(this, 'Behavior');
+    utils.assertClass(node, 'Node');
+    Entity(this, 'Route', node);
+
+    utils.assertClass(player, 'Player');
+    this.setOwner(player);
+
+    this._nodes = path;
+
+    utils.assert(this.isValid(), 'Route is valid');
 
 }, Entity, {
 
     // Actions ----------------------------------------------------------------
     update: function(tick) {
 
+        if (!this.isValid()) {
+            this.destroy(this);
+        }
+
     },
-
-    execute: function(node) {
-
-    },
-
-    equals: function(other) {
-        utils.assertClass(other, 'Behavior');
-        return this.getName() === other.getName();
-    },
-
 
     // Getter / Setter --------------------------------------------------------
-    isCompleted: function() {
-        return false;
+    isValid: function() {
+        return this._nodes.every(function(node) {
+            return node === this.getTarget() || node.isTraversableByPlayer(this.getOwner());
+
+        }, this);
     },
 
-    getName: function() {
-        return this._behaviorName;
+    getSource: function() {
+        return this._nodes.first();
     },
+
+    getTarget: function() {
+        return this._nodes.last();
+    }
 
     // Helpers ----------------------------------------------------------------
-    toString: function() {
-        return Entity.toString(this) + ' (' + this.getName() + ')';
-    }
+
 
 });
 

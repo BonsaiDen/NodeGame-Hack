@@ -21,9 +21,9 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    Game = require('./Game').Game,
     Client = require('./Client').Client,
-    NetworkEvent = require('./NetworkEvent').NetworkEvent,
+    Event = require('./Event').Event,
+    Game = require('./game/Game').Game,
     utils = require('../lib/utils').utils;
 
 var Server = Class(function(port, host, local) {
@@ -69,12 +69,10 @@ var Server = Class(function(port, host, local) {
         this._lastTickTime = now;
 
         this._clients.each(function(client) {
-
             if (!client.isPlaying()) {
                 client.update();
             }
-
-        }, this);
+        });
 
         while(this._elapsedTickTime >= this._tickDuration) {
 
@@ -137,14 +135,15 @@ var Server = Class(function(port, host, local) {
         var clients = this._clients,
             client = new Client(this, remote);
 
+        var that = this;
         remote.on('message', function(msg) {
 
-            var event = NetworkEvent.fromArray(msg);
+            var event = Event.fromArray(msg);
             if (event) {
                 client.onEvent(event);
 
             } else {
-                console.log('Invalid message:', msg);
+                that.log('Invalid message', msg);
             }
 
         });

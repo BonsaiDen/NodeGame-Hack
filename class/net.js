@@ -23,13 +23,16 @@ exports.All = [];
 
 function define(id, map) {
 
+    var list = [];
     for(var i in map) {
         if (map.hasOwnProperty(i)) {
+            list.push(map[i]);
             exports.All.push(map[i]);
         }
     }
 
     exports[id] = map;
+    exports[id + 'Codes'] = list;
 
 }
 

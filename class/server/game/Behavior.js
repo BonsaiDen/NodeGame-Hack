@@ -19,49 +19,45 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Class = require('../lib/Class').Class,
-    utils = require('../lib/utils').utils,
-    net = require('./net');
+var Class = require('../../lib/Class').Class,
+    List = require('../../lib/List').List,
+    Entity = require('./Entity').Entity;
 
-var NetworkEvent = Class(function(id, code, data) {
-    utils.assert(utils.isNumber(id), 'id is a number');
-    utils.assert(id > 0, 'id is greater than 0');
-    utils.assert(utils.isNumber(code), 'code is a number');
-    utils.assert(net.All.indexOf(code) !== -1, 'code is valid code');
+exports.Behavior = Class(function(behaviorName) {
 
-    this.id = id;
-    this.code = code;
-    this.data = data;
+    this._behaviorName = behaviorName;
+    Entity(this, 'Behavior');
 
-}, {
+}, Entity, {
 
-    $fromArray: function(array) {
-
-        if (Array.isArray(array) && array.length === 3) {
-            if (utils.isNumber(array[0]) && utils.isNumber(array[1])) {
-                if (array[0] > 0 && net.All.indexOf(array[1]) !== -1) {
-                    return new NetworkEvent(array[0], array[1], array[2]);
-                }
-            }
-        }
-
-        return null;
+    // Actions ----------------------------------------------------------------
+    update: function(tick) {
 
     },
 
-    toArray: function() {
-        return [this.id, this.code, this.data];
+    execute: function(node) {
+
     },
 
-    isOfType: function(type) {
-        return type === 'NetworkEvent';
+    equals: function(other) {
+        utils.assertClass(other, 'Behavior');
+        return this.getName() === other.getName();
     },
 
+
+    // Getter / Setter --------------------------------------------------------
+    isCompleted: function() {
+        return false;
+    },
+
+    getName: function() {
+        return this._behaviorName;
+    },
+
+    // Helpers ----------------------------------------------------------------
     toString: function() {
-        return 'NetworkEvent id:' + this.id + ' code:' + this.code;
+        return Entity.toString(this) + ' (' + this.getName() + ')';
     }
 
 });
-
-exports.NetworkEvent = NetworkEvent;
 

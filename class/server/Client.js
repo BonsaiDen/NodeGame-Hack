@@ -20,11 +20,9 @@
   * THE SOFTWARE.
   */
 var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
-    Entity = require('./Entity').Entity,
-    NetworkEvent = require('./NetworkEvent').NetworkEvent,
+    Event = require('./Event').Event,
     utils = require('../lib/utils').utils,
-    net = require('./net');
+    net = require('../net');
 
 var Client = Class(function(server, remote) {
 
@@ -34,12 +32,11 @@ var Client = Class(function(server, remote) {
     this._player = null;
     this._state = Client.State.Initializing;
     this._events = [];
-
-    Entity(this, 'Client');
+    this.id = ++Client.id;
 
     this.log('Connected via', remote);
 
-}, Entity, {
+}, {
 
     $State: {
         Initializing: 0,
@@ -48,6 +45,8 @@ var Client = Class(function(server, remote) {
         Lobby: 3,
         Game: 4
     },
+
+    $id: 0,
 
     // Actions ----------------------------------------------------------------
     update: function() {
@@ -67,6 +66,7 @@ var Client = Class(function(server, remote) {
             if (code === net.Command.Login) {
                 // validate username
                 // TODO persona login later on
+                this.invalid(event);
 
             } else {
                 this.invalid(event);
@@ -207,7 +207,7 @@ var Client = Class(function(server, remote) {
 
     quit: function() {
         this._remote.close();
-        Entity.destroy(this, this);
+        //Entity.destroy(this, this);
     },
 
 
@@ -260,18 +260,18 @@ var Client = Class(function(server, remote) {
     },
 
     send: function(id, code, data) {
-        var event = new NetworkEvent(id, code, data !== undefined ? data : null);
+        var event = new Event(id, code, data !== undefined ? data : null);
         this._remote.send(event.toArray());
     },
 
     error: function(event, code, data) {
-        utils.assertClass(event, 'NetworkEvent');
+        utils.assertClass(event, 'Event');
         utils.assert(net.Error.indexOf(code) !== -1, 'error code does exist');
         this.send(event.id, code, data);
     },
 
     invalid: function(event) {
-        utils.assertClass(event, 'NetworkEvent');
+        utils.assertClass(event, 'Event');
         this.send(event.id, net.Error.Invalid, event.data);
     },
 
@@ -282,7 +282,7 @@ var Client = Class(function(server, remote) {
     },
 
     onEvent: function(event) {
-        utils.assertClass(event, 'NetworkEvent');
+        utils.assertClass(event, 'Event');
         this.log('Event:', event);
         this._events.push(event);
     },
@@ -322,8 +322,12 @@ var Client = Class(function(server, remote) {
 
 
     // Helpers ----------------------------------------------------------------
+    log: function() {
+        utils.log.apply(this, arguments);
+    },
+
     toString: function() {
-        return Entity.toString(this) + ' ' + this._remote.id;
+        return 'Client ' + this._remote.id;
     }
 
 });

@@ -19,15 +19,15 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
+var Class = require('../../lib/Class').Class,
+    List = require('../../lib/List').List,
+    utils = require('../../lib/utils').utils,
     Entity = require('./Entity').Entity,
     Player = require('./Player').Player,
     Node = require('./Node').Node,
     Link = require('./Link').Link,
     Action = require('./Action').Action,
     Behavior = require('./Behavior').Behavior,
-    utils = require('../lib/utils').utils,
     fs = require('fs');
 
 exports.Game = Class(function(server) {

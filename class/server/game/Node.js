@@ -19,11 +19,11 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
+var Class = require('../../lib/Class').Class,
+    List = require('../../lib/List').List,
+    utils = require('../../lib/utils').utils,
     Entity = require('./Entity').Entity,
-    Route = require('./Route').Route,
-    utils = require('../lib/utils').utils;
+    Route = require('./Route').Route;
 
 exports.Node = Class(function(game, player, data) {
 

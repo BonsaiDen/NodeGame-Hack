@@ -21,9 +21,10 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
-    NetworkEvent = require('../server/NetworkEvent').NetworkEvent,
     utils = require('../lib/utils').utils,
-    net = require('../server/net');
+    Promise = require('./Promise').Promise,
+    Event = require('../server/Event').Event,
+    net = require('../net');
 
 exports.Client = Class(function(port, host, local) {
 
@@ -33,7 +34,9 @@ exports.Client = Class(function(port, host, local) {
     this._port = port;
     this._host = host;
     this._isLocal = !!local;
-    this._networkId = 0;
+
+    this._eventId = 0;
+    this._events = {};
 
     var client = require(this._isLocal ? './lib/Server' : './lib/lithium');
     this._interface = new client.Client(null, JSON.stringify, JSON.parse);
@@ -42,9 +45,9 @@ exports.Client = Class(function(port, host, local) {
 
     // Actions ----------------------------------------------------------------
     start: function() {
-        this._interface.on('connection', this.onConnection, this);
-        this._interface.on('message', this.onMessage, this);
-        this._interface.on('close', this.onClose, this);
+        this._interface.on('connection', this._connection, this);
+        this._interface.on('message', this._message, this);
+        this._interface.on('close', this._close, this);
         this._interface.connect(this._port, this._host);
     },
 
@@ -52,27 +55,62 @@ exports.Client = Class(function(port, host, local) {
         this._interface.close();
     },
 
+    // TODO add command() method which encapsulates the promise code
+    // so send() can be used for low level calls
     send: function(code, data) {
 
-        var id = ++this._networkId,
-            event = new NetworkEvent(id, code, data !== undefined ? data : null);
+        var event = new Event(++this._eventId, code,
+                                data !== undefined ? data : null);
 
         this._interface.send(event.toArray());
+        return this._events[event.id] = new Promise();
 
     },
 
 
-    // Event Handlers ---------------------------------------------------------
-    onConnection: function() {
+    // Network Handlers -------------------------------------------------------
+    _connection: function() {
+
         this.log('Connected');
-        this.send(net.Command.Login, 'BonsaiDen');
+        this.send(net.Command.Login, 'BonsaiDen').success(function() {
+
+        }).error(function() {
+            this.log('Failed to login');
+
+        }, this);
+
     },
 
-    onMessage: function(msg) {
-        this.log('Message:', msg);
+    _message: function(msg) {
+
+        var event = Event.fromArray(msg);
+        if (event) {
+
+            // Handle responses to messages that were send
+            if (this._events.hasOwnProperty(event.id)) {
+                this.log('Response', event);
+
+                var promise = this._events[event.id];
+                if (net.ErrorCodes.indexOf(event.code) !== -1) {
+                    promise.reject(event);
+
+                } else {
+                    promise.resolve(event);
+                }
+
+                delete this._events[event.id];
+
+            } else {
+                this.log('Event', event);
+            }
+
+        } else {
+            this.log('Invalid message', msg);
+        }
+
     },
 
-    onClose: function(byRemote, reason, code) {
+    _close: function(byRemote, reason, code) {
 
         if (this._interface.wasConnected()) {
             this.log('Disconnected ', byRemote, reason, code);

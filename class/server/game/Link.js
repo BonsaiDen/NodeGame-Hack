@@ -19,10 +19,10 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Class = require('../lib/Class').Class,
-    List = require('../lib/List').List,
-    Entity = require('./Entity').Entity,
-    utils = require('../lib/utils').utils;
+var Class = require('../../lib/Class').Class,
+    List = require('../../lib/List').List,
+    utils = require('../../lib/utils').utils,
+    Entity = require('./Entity').Entity;
 
 exports.Link = Class(function(game, one, two) {
 
@@ -30,7 +30,6 @@ exports.Link = Class(function(game, one, two) {
     this._nodeTwo = two;
 
     Entity(this, 'Link', game);
-
     this.setOwner(game.getNeutral());
 
 }, Entity, {
