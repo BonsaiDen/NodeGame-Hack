@@ -24,7 +24,8 @@ var Class = require('../lib/Class').Class,
     Client = require('./Client').Client,
     Event = require('./Event').Event,
     Game = require('./game/Game').Game,
-    utils = require('../lib/utils').utils;
+    utils = require('../lib/utils').utils,
+    net = require('../net');
 
 var Server = Class(function(port, host, local) {
 
@@ -140,10 +141,55 @@ var Server = Class(function(port, host, local) {
 
             var event = Event.fromArray(msg);
             if (event) {
-                client.onEvent(event);
+
+                if (client.isSynced()) {
+                    client.onEvent(event);
+
+                } else if (event.code === net.Sync.ClientResponse){
+
+                    if (utils.isArray(event.data, 'Number', 2)) {
+
+                        that.log('Sync > Response');
+                        client.send(-1, net.Sync.ServerResponse, [
+                            event.data[0],
+                            event.data[1],
+                            Date.now()
+                        ]);
+
+                    } else {
+                        that.log('Sync > Failed');
+                        remote.close();
+                    }
+
+                } else if (event.code === net.Sync.Done) {
+
+                    if (utils.isArray(event.data, 'Number', 4)) {
+
+                        var a = (event.data[2] - event.data[0]),
+                            b = (event.data[3] - event.data[1]),
+                            ping = Math.round((a + b) / 2),
+                            diff =  event.data[1] - (event.data[0] + ping);
+
+                        that.log('Sync > Done',
+                                    diff >= 0
+                                    ? 'client is ahead by ' + diff + 'ms'
+                                    : 'client is behind by ' + Math.abs(diff) + 'ms');
+
+                        client.send(-1, net.Sync.Result, diff);
+                        client.setSynced();
+
+                    } else {
+                        that.log('Sync > Failed');
+                        remote.close();
+                    }
+
+                } else {
+                    remote.close();
+                }
 
             } else {
                 that.log('Invalid message', msg);
+                remote.close();
             }
 
         });
@@ -159,6 +205,9 @@ var Server = Class(function(port, host, local) {
         });
 
         clients.add(client);
+
+        this.log('Sync > Started');
+        client.send(-1, net.Sync.ServerStart, Date.now());
 
     },
 

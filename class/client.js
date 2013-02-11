@@ -19,15 +19,8 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Server = require('./server/Server').Server,
-    Client = require('./client/Client').Client;
+var Game = require('./client/game/Game').Game;
 
-// Default to browser based server for now
-// Remove the `true`'s and start `class/server.js` before opening the page
-// to connect to the remote server
-var server = new Server(4444, 'localhost', true),
-    client = new Client(4444, 'localhost', true);
-
-server.start();
-client.start();
+var game = new Game();
+game.connect(4444, 'localhost', true);
 

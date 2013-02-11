@@ -30,7 +30,8 @@ var Client = Class(function(server, remote) {
     this._remote = remote;
     this._game = null;
     this._player = null;
-    this._state = Client.State.Initializing;
+    this._state = Client.State.Login;
+    this._synced = false;
     this._events = [];
     this.id = ++Client.id;
 
@@ -39,8 +40,8 @@ var Client = Class(function(server, remote) {
 }, {
 
     $State: {
-        Initializing: 0,
-        Syncing: 1,
+        Syncing: 0,
+        Login: 1,
         Server: 2,
         Lobby: 3,
         Game: 4
@@ -60,8 +61,7 @@ var Client = Class(function(server, remote) {
             code = event.code,
             state = this.getState();
 
-        // 1. check connect handshake and send basic server settings like tick rate
-        if (state === Client.State.Initializing) {
+        if (state === Client.State.Login) {
 
             if (code === net.Command.Login) {
                 // validate username
@@ -71,10 +71,6 @@ var Client = Class(function(server, remote) {
             } else {
                 this.invalid(event);
             }
-
-        // 2. sync time with the server
-        } else if (state === Client.State.Syncing) {
-            //this.send(net.Client.Sync, []);
 
 
         // Server Menu --------------------------------------------------------
@@ -320,6 +316,13 @@ var Client = Class(function(server, remote) {
         return this._isReady;
     },
 
+    isSynced: function() {
+        return this._synced;
+    },
+
+    setSynced: function() {
+        this._synced = true;
+    },
 
     // Helpers ----------------------------------------------------------------
     log: function() {

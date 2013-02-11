@@ -22,7 +22,7 @@
 
 var Class = require('./Class').Class;
 exports.Emitter = Class(function() {
-    this._events = {};
+    this._emitterEvents = {};
 
 }, {
 
@@ -36,8 +36,8 @@ exports.Emitter = Class(function() {
     on: function(name, callback, scope, once) {
 
         var events = null;
-        if (!(events = this._events[name])) {
-            events = this._events[name] = [];
+        if (!(events = this._emitterEvents[name])) {
+            events = this._emitterEvents[name] = [];
         }
 
         events.push({
@@ -66,7 +66,7 @@ exports.Emitter = Class(function() {
         var id = name;
 
         // Go up to parent
-        var events = this._events[id],
+        var events = this._emitterEvents[id],
             stopped = false;
 
         if (events) {
@@ -123,7 +123,7 @@ exports.Emitter = Class(function() {
 
             if (func) {
 
-                var events = this._events[name];
+                var events = this._emitterEvents[name];
                 if (events) {
 
                     for(var i = 0, l = events.length; i < l; i++) {
@@ -139,14 +139,14 @@ exports.Emitter = Class(function() {
                 }
 
             } else {
-                count = this._events[name];
-                delete this._events[name];
+                count = this._emitterEvents[name];
+                delete this._emitterEvents[name];
             }
 
         } else {
 
-            for(var e in this._events) {
-                if (this._events.hasOwnProperty(e)) {
+            for(var e in this._emitterEvents) {
+                if (this._emitterEvents.hasOwnProperty(e)) {
                     this.unbind(e, func);
                 }
             }

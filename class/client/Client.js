@@ -21,6 +21,7 @@
   */
 var Class = require('../lib/Class').Class,
     List = require('../lib/List').List,
+    Emitter = require('../lib/Emitter').Emitter,
     utils = require('../lib/utils').utils,
     Promise = require('./Promise').Promise,
     Event = require('../server/Event').Event,
@@ -36,12 +37,15 @@ exports.Client = Class(function(port, host, local) {
     this._isLocal = !!local;
 
     this._eventId = 0;
-    this._events = {};
+    this._pendingCommands = new List();
+    this._syncOffset = 0;
+
+    Emitter(this);
 
     var client = require(this._isLocal ? './lib/Server' : './lib/lithium');
     this._interface = new client.Client(null, JSON.stringify, JSON.parse);
 
-}, {
+}, Emitter, {
 
     // Actions ----------------------------------------------------------------
     start: function() {
@@ -49,48 +53,65 @@ exports.Client = Class(function(port, host, local) {
         this._interface.on('message', this._message, this);
         this._interface.on('close', this._close, this);
         this._interface.connect(this._port, this._host);
+        this.emit('start');
     },
 
     stop: function() {
+        this.emit('stop');
+        this._interface.unbind('connection');
+        this._interface.unbind('message');
+        this._interface.unbind('close');
         this._interface.close();
     },
 
-    // TODO add command() method which encapsulates the promise code
-    // so send() can be used for low level calls
-    send: function(code, data) {
 
-        var event = new Event(++this._eventId, code,
-                                data !== undefined ? data : null);
+    // Server Interaction ----------------------------------------------------
+    command: function(code, data) {
+        var event = this.send(code, data, ++this._eventId);
+        event.promise = new Promise();
+        this._pendingCommands.add(event);
+        return event.promise;
+    },
 
+    action: function(data) {
+
+    },
+
+    send: function(code, data, id) {
+        var event = new Event(id || -1, code, data);
         this._interface.send(event.toArray());
-        return this._events[event.id] = new Promise();
+        this.log('Sent', event, data);
+        return event;
+    },
 
+
+    // Getter / Setter --------------------------------------------------------
+    isLocal: function() {
+        return this._isLocal;
+    },
+
+    isConnected: function() {
+        return this._interface.isConnected();
     },
 
 
     // Network Handlers -------------------------------------------------------
     _connection: function() {
-
-        this.log('Connected');
-        this.send(net.Command.Login, 'BonsaiDen').success(function() {
-
-        }).error(function() {
-            this.log('Failed to login');
-
-        }, this);
-
     },
 
     _message: function(msg) {
 
-        var event = Event.fromArray(msg);
+        var event = Event.fromArray(msg),
+            events = this._pendingCommands;
+
         if (event) {
 
-            // Handle responses to messages that were send
-            if (this._events.hasOwnProperty(event.id)) {
-                this.log('Response', event);
+            // Handle server responses
+            if (events.has(event)) {
 
-                var promise = this._events[event.id];
+                this.log('Command Response', event);
+
+                var promise = events.get(event).promise;
                 if (net.ErrorCodes.indexOf(event.code) !== -1) {
                     promise.reject(event);
 
@@ -98,10 +119,36 @@ exports.Client = Class(function(port, host, local) {
                     promise.resolve(event);
                 }
 
-                delete this._events[event.id];
+                events.remove(event);
+
+            // Handle low level events right here
+            } else if (event.code === net.Sync.ServerStart) {
+                this.log('Sync > Started', event);
+                this.send(net.Sync.ClientResponse, [event.data, Date.now()]);
+
+            } else if (event.code === net.Sync.ServerResponse) {
+                this.log('Sync > Response ', event);
+                this.send(net.Sync.Done, [
+                    event.data[0],
+                    event.data[1],
+                    event.data[2],
+                    Date.now()
+                ]);
+
+            } else if (event.code === net.Sync.Result) {
+
+                var diff = this._syncOffset = event.data;
+                this.log('Sync > Done', diff >= 0
+                                        ? 'ahead by ' + diff + 'ms'
+                                        : 'behind by ' + Math.abs(diff) + 'ms');
+
+                this.emit('connection');
+
+            } else if (net.GameCodes.indexOf(event.code) !== -1) {
+                this.emit('event', event);
 
             } else {
-                this.log('Event', event);
+                this.log('Unkown event', msg);
             }
 
         } else {
@@ -113,16 +160,20 @@ exports.Client = Class(function(port, host, local) {
     _close: function(byRemote, reason, code) {
 
         if (this._interface.wasConnected()) {
-            this.log('Disconnected ', byRemote, reason, code);
+            this.emit('close', byRemote, reason, code);
 
         } else {
-            this.log('Connection Failed', reason, code);
+            this.emit('failure', reason, code);
         }
 
     },
 
 
     // Helpers ----------------------------------------------------------------
+    now: function() {
+        return Date.now() - this._syncOffset;
+    },
+
     log: function() {
         utils.log.apply(this, arguments);
     },

@@ -171,6 +171,7 @@ exports.Client = Class(function(callback, encoder, decoder) {
     this._closedByRemote = true;
     this._encoder = encoder || function(msg) { return msg; };
     this._decoder = decoder || function(msg) { return msg; };
+    this._delay = 0;
 
     Emitter(this);
 
@@ -212,8 +213,15 @@ exports.Client = Class(function(callback, encoder, decoder) {
             return false;
 
         } else {
-            this._send(data);
+
+            var that = this;
+            setTimeout(function() {
+                that._send(data);
+
+            }, this._delay);
+
             return true;
+
         }
 
     },
@@ -229,6 +237,10 @@ exports.Client = Class(function(callback, encoder, decoder) {
             return true;
         }
 
+    },
+
+    setDelay: function(delay) {
+        this._delay = delay;
     },
 
     // Private ----------------------------------------------------------------
@@ -247,7 +259,13 @@ exports.Client = Class(function(callback, encoder, decoder) {
     },
 
     _receive: function(data) {
-        this.emit('message', this._decoder(data));
+
+        var that = this;
+        setTimeout(function() {
+            that.emit('message', that._decoder(data));
+
+        }, this._delay);
+
     },
 
     _close: function(reason) {

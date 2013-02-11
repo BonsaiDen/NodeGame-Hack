@@ -74,8 +74,37 @@ var utils = {
         return Object.prototype.toString.call(value) === '[object Object]';
     },
 
-    isArray: function(value) {
-        return Object.prototype.toString.call(value) === '[object Array]';
+    isArray: function(value, types, length) {
+
+        var is = Object.prototype.toString.call(value) === '[object Array]',
+            i, l;
+
+        if (types === undefined) {
+            return is;
+
+        } else if (!is) {
+            return false;
+
+        } else if (utils.isString(types) && value.length === length) {
+
+            for(i = 0, l = value.length; i < l; i++) {
+                if (!utils['is' + types](value[i])) {
+                    return false;
+                }
+            }
+
+        } else if (value.length === types.length) {
+
+            for(i = 0, l = value.length; i < l; i++) {
+                if (!utils['is' + types[i]](value[i])) {
+                    return false;
+                }
+            }
+
+        }
+
+        return true;
+
     },
 
     isBool: function(value) {

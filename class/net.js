@@ -36,35 +36,43 @@ function define(id, map) {
 
 }
 
+// These are send by the server client during synchronization
+define('Sync', {
+
+    // Time sync
+    ServerStart: 10,
+    ClientResponse: 11,
+    ServerResponse: 12,
+    Done: 13,
+    Result: 14
+
+});
+
+
 define('Game', {
 
     // A list of games with free/total slots (full ones might be joined as observer)
-    List: 100,
+    GameList: 100,
 
     // Update for a game (players, slots, ready status)
-    Info: 101,
+    GameInfo: 101,
 
     // Game was started (initial state to follow)
-    Started: 102,
+    GameStart: 102,
 
     // A Game is finished (status)
-    Finished: 103
-
-});
-
-define('Client', {
+    GameComplete: 103,
 
     // A client joined a game (game, client, slot, observer)
-    Joined: 200,
+    ClientJoined: 104,
 
     // A client left a game (game, client, slot, observer)
-    Left: 201,
-
-    // Time sync
-    Sync: 202
+    ClientLeft: 105
 
 });
 
+
+// These are send by a client to trigger actions
 define('Command', {
 
     // Creates a new game and joins it (map)
@@ -98,6 +106,8 @@ define('Command', {
 
 });
 
+
+// These are send in response to a command
 define('Error', {
 
     // The action requested by the client is invalid

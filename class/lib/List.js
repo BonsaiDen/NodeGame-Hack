@@ -73,7 +73,7 @@ var List = Class(function(items, maxCount) {
     },
 
     get: function(id) {
-        return this._items['#' + id];
+        return this._items['#' + this._getId(id)] || null;
     },
 
     has: function(item) {

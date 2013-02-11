@@ -32,7 +32,7 @@ var Event = Class(function(id, code, data) {
 
     this.id = id;
     this.code = code;
-    this.data = data;
+    this.data = data !== undefined ? data : null;
 
 }, {
 
